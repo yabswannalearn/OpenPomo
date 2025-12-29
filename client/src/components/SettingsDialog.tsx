@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Settings, Waves, Sun, Moon, Palette, Volume2 } from "lucide-react";
+import { Settings, Palette, Volume2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "@/components/ThemeProvider";
 import { ALARM_SOUNDS, AlarmSound, playAlarmSound } from "@/lib/alarmSounds";
@@ -165,12 +165,11 @@ function SoundSelector({
 }
 
 export function SettingsDialog() {
-  const { isDark, toggleDarkMode, modeColors, setModeColor } = useTheme();
+  const { isDark, modeColors, setModeColor } = useTheme();
   const [settings, setSettings] = useState<TimerSettings>(DEFAULT_SETTINGS);
   const [tempSettings, setTempSettings] = useState<TimerSettings>(DEFAULT_SETTINGS);
   const [alarmSettings, setAlarmSettings] = useState<AlarmSettings>(DEFAULT_ALARMS);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [brownNoiseEnabled, setBrownNoiseEnabled] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('timerSettings');
@@ -190,10 +189,6 @@ export function SettingsDialog() {
       } catch (e) {
         console.error('Failed to parse alarm settings', e);
       }
-    }
-    const brownNoisePref = localStorage.getItem('brownNoiseEnabled');
-    if (brownNoisePref !== null) {
-      setBrownNoiseEnabled(brownNoisePref === 'true');
     }
   }, []);
 
@@ -217,7 +212,6 @@ export function SettingsDialog() {
   const resetToDefaults = () => {
     setTempSettings(DEFAULT_SETTINGS);
     setAlarmSettings(DEFAULT_ALARMS);
-    setBrownNoiseEnabled(false);
     // Reset colors to defaults
     setModeColor('pomodoro', '350');
     setModeColor('shortBreak', '160');
@@ -316,42 +310,12 @@ export function SettingsDialog() {
             <SoundSelector label="Long Break" value={alarmSettings.longBreak} onChange={(s) => updateAlarm('longBreak', s)} colorHue={modeColors.longBreak} />
           </div>
 
-          {/* Sound Settings */}
-          <div className="border-t border-border pt-4">
-            <p className="text-sm font-medium mb-4">Background Sound</p>
-            <div className="flex items-center justify-between py-2">
-              <label className="text-sm font-medium flex items-center">
-                <Waves className="h-4 w-4 mr-2 text-amber-600" />
-                Brown Noise (while timer runs)
-              </label>
-              <button type="button" onClick={() => {
-                  const newValue = !brownNoiseEnabled;
-                  setBrownNoiseEnabled(newValue);
-                  localStorage.setItem('brownNoiseEnabled', String(newValue));
-                }}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${brownNoiseEnabled ? 'bg-amber-600' : 'bg-muted'}`}>
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${brownNoiseEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
-          </div>
-          
           {/* Appearance */}
           <div className="border-t border-border pt-4">
             <p className="text-sm font-medium mb-4 flex items-center">
               <Palette className="h-4 w-4 mr-2" />
               Appearance
             </p>
-            
-            <div className="flex items-center justify-between py-2 mb-4">
-              <label className="text-sm font-medium flex items-center">
-                {isDark ? <Moon className="h-4 w-4 mr-2" /> : <Sun className="h-4 w-4 mr-2" />}
-                {isDark ? 'Dark Mode' : 'Light Mode'}
-              </label>
-              <button type="button" onClick={toggleDarkMode}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isDark ? 'bg-primary' : 'bg-muted'}`}>
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isDark ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
             
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">Timer Colors</p>
