@@ -261,8 +261,8 @@ export default function Dashboard() {
                     />
                     <YAxis hide />
                     <Tooltip 
-                      formatter={(value: number) => [`${value} pomodoros`, 'Count']}
-                      labelFormatter={(hour: number) => formatHour(hour)}
+                      formatter={(value: any) => [`${value} pomodoros`, 'Count']}
+                      labelFormatter={(hour: any) => formatHour(hour)}
                       contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                     />
                     <Bar dataKey="count" fill="#f43f5e" radius={[4, 4, 0, 0]} />
@@ -293,7 +293,7 @@ export default function Dashboard() {
                           ))}
                         </Pie>
                         <Tooltip 
-                          formatter={(value: number, name: string) => [`${value} pomodoros`, name]}
+                          formatter={(value: any, name: any) => [`${value} pomodoros`, name]}
                           contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                         />
                       </PieChart>
