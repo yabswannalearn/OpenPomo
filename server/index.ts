@@ -7,7 +7,13 @@ import prisma from './lib/prisma.js';
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-app.use(cors());
+// CORS configuration for production
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || '*',
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use((express as any).json());
 
 // Health Check
