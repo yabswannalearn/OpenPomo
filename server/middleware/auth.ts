@@ -7,6 +7,7 @@ export interface AuthRequest extends Request {
     userId: string;
   };
   userId?: string;
+  body: any;
 }
 
 export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
