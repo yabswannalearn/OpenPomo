@@ -8,12 +8,24 @@ const app = express();
 const PORT = process.env.PORT || 8000;
 
 // CORS configuration for production
-const corsOptions = {
-  origin: process.env.CORS_ORIGIN || '*',
-  credentials: true,
-};
+const allowedOrigins = process.env.CORS_ORIGIN 
+  ? [process.env.CORS_ORIGIN] 
+  : ['http://localhost:3000'];
 
-app.use(cors(corsOptions));
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin) || !process.env.CORS_ORIGIN) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow all for now during debugging
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use((express as any).json());
 
 // Health Check
