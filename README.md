@@ -1,6 +1,6 @@
 # ⏱️ OpenPomo
 
-OpenPomo is a premium productivity tool designed to help you master your focus. Whether you're studying, working, or building your next big project, OpenPomo gives you the tools to stay on track and visualize your progress.
+OpenPomo is a free premium productivity tool designed to help you master your focus. Whether you're studying, working, or building your next big project, OpenPomo gives you the tools to stay on track and visualize your progress.
 
 ![OpenPomo Dashboard](file:///C:/Users/reina/.gemini/antigravity/brain/65e723b5-f33e-4618-a215-c325d8b0973d/premium_dashboard_full_1766992319716.png)
 
