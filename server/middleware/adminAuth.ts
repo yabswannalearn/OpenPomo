@@ -6,10 +6,15 @@ interface JwtPayload {
   role: string;
 }
 
+interface RequestWithCookies extends Request {
+  cookies: { [key: string]: string };
+}
+
 export const adminAuth = (req: Request, res: Response, next: NextFunction) => {
   try {
     // Try to get token from cookie first, then from Authorization header
-    let token = req.cookies?.token;
+    const cookies = (req as RequestWithCookies).cookies;
+    let token = cookies?.token;
     
     if (!token) {
       const authHeader = req.headers.authorization;

@@ -9,11 +9,13 @@ export interface AuthRequest extends Request {
   userId?: string;
   userRole?: string;
   body: any;
+  cookies: { [key: string]: string };
 }
 
 export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   // Try to get token from cookie first, then from Authorization header (for backwards compatibility)
-  let token = req.cookies?.token;
+  const cookies = (req as AuthRequest).cookies;
+  let token = cookies?.token;
   
   if (!token) {
     const authHeader = req.headers.authorization;
