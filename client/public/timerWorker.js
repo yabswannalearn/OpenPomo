@@ -1,9 +1,11 @@
 // Timer Web Worker - runs in separate thread, not affected by browser throttling
-let timerId: ReturnType<typeof setInterval> | null = null;
-let endTime: number | null = null;
+let timerId = null;
+let endTime = null;
 
-self.onmessage = (e: MessageEvent) => {
-  const { type, payload } = e.data;
+self.onmessage = function(e) {
+  const data = e.data;
+  const type = data.type;
+  const payload = data.payload;
   
   switch (type) {
     case 'START':
@@ -37,7 +39,7 @@ function checkTime() {
   const now = Date.now();
   const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
   
-  self.postMessage({ type: 'TICK', remaining });
+  self.postMessage({ type: 'TICK', remaining: remaining });
   
   if (remaining <= 0) {
     if (timerId) {
