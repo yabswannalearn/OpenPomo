@@ -29,15 +29,18 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!loading && (!user || (user as any).role !== "admin")) {
+    const userRole = user && 'role' in user ? (user as { role?: string }).role : undefined;
+    if (!loading && (!user || userRole !== "admin")) {
       router.push("/");
     }
   }, [user, loading, router]);
 
   useEffect(() => {
-    if (user && (user as any).role === "admin") {
+    const userRole = user && 'role' in user ? (user as { role?: string }).role : undefined;
+    if (user && userRole === "admin") {
       fetchUsers();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const fetchUsers = async () => {
@@ -86,7 +89,8 @@ export default function AdminPage() {
     );
   }
 
-  if ((user as any).role !== "admin") {
+  const userRole = user && 'role' in user ? (user as { role?: string }).role : undefined;
+  if (userRole !== "admin") {
     return null;
   }
 
