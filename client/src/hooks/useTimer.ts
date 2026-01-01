@@ -3,9 +3,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 type TimerMode = 'pomodoro' | 'shortBreak' | 'longBreak';
 
 interface UseTimerProps {
-  pomodoroTime: number; // in seconds now
-  shortBreakTime: number; // in seconds
-  longBreakTime: number; // in seconds
+  pomodoroTime: number;
+  shortBreakTime: number;
+  longBreakTime: number;
   onComplete?: (completedMode: string) => void;
 }
 
@@ -14,7 +14,7 @@ interface TimerState {
   timeLeft: number;
   hasStarted: boolean;
   pomodoroCount: number;
-  endTime: number | null; // Store the absolute end time for background persistence
+  endTime: number | null;
   isRunning: boolean;
 }
 
@@ -26,7 +26,6 @@ export const useTimer = ({
   longBreakTime,
   onComplete,
 }: UseTimerProps) => {
-  // Load initial state from localStorage
   const getInitialState = (): TimerState => {
     if (typeof window === 'undefined') {
       return { mode: 'pomodoro', timeLeft: pomodoroTime, hasStarted: false, pomodoroCount: 0, endTime: null, isRunning: false };
@@ -53,12 +52,13 @@ export const useTimer = ({
   const initialState = getInitialState();
   const [mode, setMode] = useState<TimerMode>(initialState.mode);
   const [timeLeft, setTimeLeft] = useState(initialState.timeLeft);
-  const [isRunning, setIsRunning] = useState(initialState.isRunning && initialState.endTime !== null);
+  const [isRunning, setIsRunning] = useState(false);
   const [pomodoroCount, setPomodoroCount] = useState(initialState.pomodoroCount);
   const endTimeRef = useRef<number | null>(initialState.endTime);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasStartedRef = useRef(initialState.hasStarted);
-  const completingRef = useRef(false); // Prevent double completion
+  const completingRef = useRef(false);
+  const workerRef = useRef<Worker | null>(null);
+  const fallbackIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const getDuration = useCallback((currentMode: TimerMode) => {
     switch (currentMode) {
@@ -68,7 +68,7 @@ export const useTimer = ({
     }
   }, [pomodoroTime, shortBreakTime, longBreakTime]);
 
-  // Save state to localStorage whenever it changes - include endTime and isRunning
+  // Save state to localStorage
   useEffect(() => {
     const state: TimerState = {
       mode,
@@ -82,7 +82,6 @@ export const useTimer = ({
   }, [mode, timeLeft, pomodoroCount, isRunning]);
 
   const handleTimerComplete = useCallback(() => {
-    // Prevent double completion
     if (completingRef.current) return;
     completingRef.current = true;
 
@@ -93,12 +92,7 @@ export const useTimer = ({
     if (mode === 'pomodoro') {
       const newCount = pomodoroCount + 1;
       setPomodoroCount(newCount);
-      
-      if (newCount % 4 === 0) {
-        nextMode = 'longBreak';
-      } else {
-        nextMode = 'shortBreak';
-      }
+      nextMode = newCount % 4 === 0 ? 'longBreak' : 'shortBreak';
     } else {
       nextMode = 'pomodoro';
     }
@@ -109,59 +103,111 @@ export const useTimer = ({
     setTimeLeft(nextDuration);
     hasStartedRef.current = true;
     
-    // Auto-start the next timer after a brief pause
+    // Auto-start the next timer
     setTimeout(() => {
       const now = Date.now();
-      endTimeRef.current = now + nextDuration * 1000;
+      const newEndTime = now + nextDuration * 1000;
+      endTimeRef.current = newEndTime;
       setIsRunning(true);
+      
+      // Start worker or fallback
+      if (workerRef.current) {
+        workerRef.current.postMessage({ type: 'START', payload: { endTime: newEndTime } });
+      }
       completingRef.current = false;
     }, 500);
   }, [mode, pomodoroCount, onComplete, getDuration]);
 
-  const switchMode = useCallback((newMode: TimerMode, autoStart: boolean = false) => {
+  // Initialize Web Worker
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      workerRef.current = new Worker('/timerWorker.js');
+      
+      workerRef.current.onmessage = (e) => {
+        const { type, remaining } = e.data;
+        
+        if (type === 'TICK') {
+          setTimeLeft(remaining);
+        } else if (type === 'COMPLETE') {
+          setIsRunning(false);
+          endTimeRef.current = null;
+          handleTimerComplete();
+        }
+      };
+
+      workerRef.current.onerror = (err) => {
+        console.warn('Worker error, using fallback:', err);
+        workerRef.current = null;
+      };
+    } catch (err) {
+      console.warn('Web Worker not supported, using fallback');
+      workerRef.current = null;
+    }
+
+    return () => {
+      if (workerRef.current) {
+        workerRef.current.terminate();
+        workerRef.current = null;
+      }
+    };
+  }, [handleTimerComplete]);
+
+  // Fallback interval for browsers without Web Worker support
+  const startFallbackInterval = useCallback(() => {
+    if (fallbackIntervalRef.current) clearInterval(fallbackIntervalRef.current);
+    
+    fallbackIntervalRef.current = setInterval(() => {
+      if (!endTimeRef.current || completingRef.current) return;
+      
+      const now = Date.now();
+      const remaining = Math.max(0, Math.ceil((endTimeRef.current - now) / 1000));
+      setTimeLeft(remaining);
+      
+      if (remaining <= 0) {
+        if (fallbackIntervalRef.current) clearInterval(fallbackIntervalRef.current);
+        setIsRunning(false);
+        endTimeRef.current = null;
+        handleTimerComplete();
+      }
+    }, 200);
+  }, [handleTimerComplete]);
+
+  const switchMode = useCallback((newMode: TimerMode) => {
     setMode(newMode);
     setTimeLeft(getDuration(newMode));
     hasStartedRef.current = false;
-    if (!autoStart) {
-      setIsRunning(false);
-      endTimeRef.current = null;
+    setIsRunning(false);
+    endTimeRef.current = null;
+    
+    if (workerRef.current) {
+      workerRef.current.postMessage({ type: 'STOP' });
+    }
+    if (fallbackIntervalRef.current) {
+      clearInterval(fallbackIntervalRef.current);
     }
   }, [getDuration]);
-
-  // Core tick function - checks time and handles completion
-  const tick = useCallback(() => {
-    if (!endTimeRef.current || completingRef.current) return;
-    
-    const now = Date.now();
-    const remaining = Math.max(0, Math.ceil((endTimeRef.current - now) / 1000));
-    
-    setTimeLeft(remaining);
-
-    if (remaining <= 0) {
-      // Clear interval before completing to prevent multiple fires
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      setIsRunning(false);
-      endTimeRef.current = null;
-      handleTimerComplete();
-    }
-  }, [handleTimerComplete]);
 
   const startTimer = useCallback(() => {
     if (isRunning) return;
     
     const now = Date.now();
-    endTimeRef.current = now + timeLeft * 1000;
+    const newEndTime = now + timeLeft * 1000;
+    endTimeRef.current = newEndTime;
     hasStartedRef.current = true;
     setIsRunning(true);
-  }, [isRunning, timeLeft]);
+    
+    if (workerRef.current) {
+      workerRef.current.postMessage({ type: 'START', payload: { endTime: newEndTime } });
+    } else {
+      startFallbackInterval();
+    }
+  }, [isRunning, timeLeft, startFallbackInterval]);
 
   const pauseTimer = useCallback(() => {
     if (!isRunning) return;
     
-    // Calculate remaining time before stopping
     if (endTimeRef.current) {
       const now = Date.now();
       const remaining = Math.max(0, Math.ceil((endTimeRef.current - now) / 1000));
@@ -169,43 +215,60 @@ export const useTimer = ({
     }
     
     setIsRunning(false);
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
     endTimeRef.current = null;
+    
+    if (workerRef.current) {
+      workerRef.current.postMessage({ type: 'STOP' });
+    }
+    if (fallbackIntervalRef.current) {
+      clearInterval(fallbackIntervalRef.current);
+    }
   }, [isRunning]);
 
-  // Handle visibility change - catch up when tab becomes visible
+  // Handle visibility change - check timer when returning to tab
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && isRunning && endTimeRef.current) {
-        // Immediately check if timer should have completed while in background
-        tick();
+        if (workerRef.current) {
+          workerRef.current.postMessage({ type: 'CHECK' });
+        } else {
+          // Fallback: check manually
+          const now = Date.now();
+          const remaining = Math.max(0, Math.ceil((endTimeRef.current - now) / 1000));
+          setTimeLeft(remaining);
+          if (remaining <= 0) {
+            setIsRunning(false);
+            endTimeRef.current = null;
+            handleTimerComplete();
+          }
+        }
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [isRunning, tick]);
+  }, [isRunning, handleTimerComplete]);
 
-  // Restore timer on mount if it was running
+  // Restore timer on mount
   useEffect(() => {
     if (initialState.isRunning && initialState.endTime) {
       const now = Date.now();
       if (initialState.endTime > now) {
-        // Timer still has time left
         endTimeRef.current = initialState.endTime;
         const remaining = Math.ceil((initialState.endTime - now) / 1000);
         setTimeLeft(remaining);
         setIsRunning(true);
+        
+        if (workerRef.current) {
+          workerRef.current.postMessage({ type: 'START', payload: { endTime: initialState.endTime } });
+        } else {
+          startFallbackInterval();
+        }
       } else {
-        // Timer should have completed while away - complete it now
         setTimeLeft(0);
         setTimeout(() => handleTimerComplete(), 100);
       }
     }
-    // Only run on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -215,36 +278,19 @@ export const useTimer = ({
     }
   }, [pomodoroTime, shortBreakTime, longBreakTime, getDuration, mode, isRunning]);
 
-  // Use setInterval for timer ticks - works in background tabs (though throttled)
-  useEffect(() => {
-    if (isRunning && endTimeRef.current) {
-      // Clear any existing interval
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-      // Run tick immediately
-      tick();
-      // Run every 200ms - browsers throttle to 1s in background anyway
-      intervalRef.current = setInterval(tick, 200);
-    }
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [isRunning, tick]);
-
   const resetTimer = useCallback(() => {
     setIsRunning(false);
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
     endTimeRef.current = null;
     hasStartedRef.current = false;
     completingRef.current = false;
     setTimeLeft(getDuration(mode));
+    
+    if (workerRef.current) {
+      workerRef.current.postMessage({ type: 'STOP' });
+    }
+    if (fallbackIntervalRef.current) {
+      clearInterval(fallbackIntervalRef.current);
+    }
   }, [getDuration, mode]);
 
   return {
