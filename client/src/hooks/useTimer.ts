@@ -52,7 +52,7 @@ export const useTimer = ({
   const [isRunning, setIsRunning] = useState(false);
   const [pomodoroCount, setPomodoroCount] = useState(initialState.pomodoroCount);
   const endTimeRef = useRef<number | null>(null);
-  const rafRef = useRef<number | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasStartedRef = useRef(initialState.hasStarted);
 
   // Save state to localStorage whenever it changes
@@ -107,6 +107,7 @@ export const useTimer = ({
     setTimeLeft(nextDuration);
     hasStartedRef.current = false;
     
+    // Auto-start the next timer after a brief pause
     setTimeout(() => {
       const now = Date.now();
       endTimeRef.current = now + nextDuration * 1000;
@@ -115,6 +116,7 @@ export const useTimer = ({
     }, 500);
   }, [mode, pomodoroCount, onComplete, getDuration]);
 
+  // Use setInterval instead of requestAnimationFrame for background tab support
   const tick = useCallback(() => {
     if (!endTimeRef.current) return;
     
@@ -124,11 +126,14 @@ export const useTimer = ({
     setTimeLeft(remaining);
 
     if (remaining <= 0) {
+      // Clear interval before completing to prevent multiple fires
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       setIsRunning(false);
       endTimeRef.current = null;
       handleTimerComplete();
-    } else {
-      rafRef.current = requestAnimationFrame(tick);
     }
   }, [handleTimerComplete]);
 
@@ -139,14 +144,16 @@ export const useTimer = ({
     endTimeRef.current = now + timeLeft * 1000;
     hasStartedRef.current = true;
     setIsRunning(true);
-    rafRef.current = requestAnimationFrame(tick);
-  }, [isRunning, timeLeft, tick]);
+  }, [isRunning, timeLeft]);
 
   const pauseTimer = useCallback(() => {
     if (!isRunning) return;
     
     setIsRunning(false);
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
     endTimeRef.current = null;
   }, [isRunning]);
 
@@ -156,18 +163,32 @@ export const useTimer = ({
     }
   }, [pomodoroTime, shortBreakTime, longBreakTime, getDuration, mode, isRunning]);
 
+  // Use setInterval for timer ticks - works in background tabs
   useEffect(() => {
     if (isRunning && endTimeRef.current) {
-      rafRef.current = requestAnimationFrame(tick);
+      // Clear any existing interval
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      // Run tick immediately
+      tick();
+      // Then run every 100ms for smooth updates and reliable completion
+      intervalRef.current = setInterval(tick, 100);
     }
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, [isRunning, tick]);
 
   const resetTimer = useCallback(() => {
     setIsRunning(false);
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
     endTimeRef.current = null;
     hasStartedRef.current = false;
     setTimeLeft(getDuration(mode));
