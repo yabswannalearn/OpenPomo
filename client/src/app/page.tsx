@@ -109,6 +109,13 @@ export default function Home() {
             </div>
           ) : (
             <div className="flex items-center space-x-3">
+              {'role' in user && (user as { role?: string }).role === 'admin' && (
+                <Link href="/admin">
+                  <Button variant="ghost" size="sm" className="flex items-center space-x-1 text-amber-500">
+                    <span>Admin</span>
+                  </Button>
+                </Link>
+              )}
               <Link href="/dashboard">
                 <Button variant="ghost" size="sm" className="flex items-center space-x-1">
                   <BarChart3 className="h-4 w-4" />
