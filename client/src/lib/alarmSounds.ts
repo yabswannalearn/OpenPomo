@@ -1,6 +1,12 @@
 // Available alarm sounds using Web Audio API
 export type AlarmSound = 'beep' | 'chime' | 'bell' | 'digital' | 'gentle' | 'none';
 
+// Extend Window interface for Safari compatibility
+interface WindowWithWebkit extends Window {
+  AudioContext: typeof AudioContext;
+  webkitAudioContext?: typeof AudioContext;
+}
+
 export const ALARM_SOUNDS: { value: AlarmSound; label: string }[] = [
   { value: 'beep', label: 'Beep' },
   { value: 'chime', label: 'Chime' },
@@ -14,7 +20,10 @@ export function playAlarmSound(sound: AlarmSound) {
   if (sound === 'none') return;
   
   try {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const w = window as WindowWithWebkit;
+    const AudioCtx = w.AudioContext || w.webkitAudioContext;
+    if (!AudioCtx) return;
+    const audioContext = new AudioCtx();
     
     switch (sound) {
       case 'beep':

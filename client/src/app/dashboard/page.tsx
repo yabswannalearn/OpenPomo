@@ -82,7 +82,7 @@ function ActivityHeatmap({ data }: { data: { date: string; count: number }[] }) 
       <div className="flex gap-0.5 overflow-x-auto pb-2">
         {weeks.map((week, wi) => (
           <div key={wi} className="flex flex-col gap-0.5">
-            {week.map((day, di) => (
+            {week.map((day, _di) => (
               <div
                 key={day.date}
                 className={`w-3 h-3 rounded-sm ${getColor(day.count)} transition-colors`}
@@ -148,15 +148,6 @@ export default function Dashboard() {
       </div>
     );
   }
-
-  const maxCount = stats?.dailyBreakdown 
-    ? Math.max(...stats.dailyBreakdown.map(d => d.count), 1) 
-    : 1;
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { weekday: 'short' });
-  };
 
   const formatHour = (hour: number) => {
     if (hour === 0) return '12am';
@@ -261,8 +252,8 @@ export default function Dashboard() {
                     />
                     <YAxis hide />
                     <Tooltip 
-                      formatter={(value: any) => [`${value} pomodoros`, 'Count']}
-                      labelFormatter={(hour: any) => formatHour(hour)}
+                      formatter={(value?: number) => [`${value ?? 0} pomodoros`, 'Count']}
+                      labelFormatter={(hour?: number) => formatHour(hour ?? 0)}
                       contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                     />
                     <Bar dataKey="count" fill="#f43f5e" radius={[4, 4, 0, 0]} />
@@ -293,7 +284,7 @@ export default function Dashboard() {
                           ))}
                         </Pie>
                         <Tooltip 
-                          formatter={(value: any, name: any) => [`${value} pomodoros`, name]}
+                          formatter={(value?: number, name?: string) => [`${value ?? 0} pomodoros`, name ?? '']}
                           contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
                         />
                       </PieChart>

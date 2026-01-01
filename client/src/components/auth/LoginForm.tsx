@@ -20,8 +20,9 @@ export function LoginForm() {
     try {
       const res = await apiClient.post("/auth/login", { email, password });
       login(res.data.token, res.data.user);
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Login failed");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || "Login failed");
     }
   };
 

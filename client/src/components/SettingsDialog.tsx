@@ -165,7 +165,7 @@ function SoundSelector({
 }
 
 export function SettingsDialog() {
-  const { isDark, modeColors, setModeColor } = useTheme();
+  const { modeColors, setModeColor } = useTheme();
   const [settings, setSettings] = useState<TimerSettings>(DEFAULT_SETTINGS);
   const [tempSettings, setTempSettings] = useState<TimerSettings>(DEFAULT_SETTINGS);
   const [alarmSettings, setAlarmSettings] = useState<AlarmSettings>(DEFAULT_ALARMS);

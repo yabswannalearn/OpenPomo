@@ -5,11 +5,16 @@ import { Card } from "@/components/ui/card";
 import { useTimer } from "@/hooks/useTimer";
 import { Play, Pause, Volume2, VolumeX, RotateCcw } from "lucide-react";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { cn } from "@/lib/utils";
 import { useApiClient } from "@/lib/apiClient";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useTheme } from "@/components/ThemeProvider";
 import { AlarmSound, playAlarmSound } from "@/lib/alarmSounds";
+
+// Extend Window interface for Safari compatibility
+interface WindowWithWebkit extends Window {
+  AudioContext: typeof AudioContext;
+  webkitAudioContext?: typeof AudioContext;
+}
 
 interface TimerSettings {
   pomodoro: number;
@@ -141,7 +146,10 @@ export function Timer({ activeTask }: TimerProps) {
     if (audioContextRef.current) return;
     
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const w = window as WindowWithWebkit;
+      const AudioCtx = w.AudioContext || w.webkitAudioContext;
+      if (!AudioCtx) return;
+      const audioContext = new AudioCtx();
       audioContextRef.current = audioContext;
       
       const bufferSize = audioContext.sampleRate * 2;
@@ -201,56 +209,12 @@ export function Timer({ activeTask }: TimerProps) {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const playAlarm = () => {
-    if (!soundEnabled) return;
-    
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      
-      const playBeep = (startTime: number) => {
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.value = 600;
-        oscillator.type = 'sine';
-        
-        gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(0.5, startTime + 0.01);
-        gainNode.gain.linearRampToValueAtTime(0, startTime + 0.2);
-        
-        oscillator.start(startTime);
-        oscillator.stop(startTime + 0.2);
-      };
-      
-      const now = audioContext.currentTime;
-      playBeep(now);
-      playBeep(now + 0.5);
-      playBeep(now + 1.0);
-      
-      setTimeout(() => audioContext.close(), 2000);
-    } catch (e) {
-      console.log('Audio play failed', e);
-    }
-  };
-
   // Get current mode's color hue
   const getCurrentHue = () => {
     switch (mode) {
       case 'pomodoro': return modeColors.pomodoro;
       case 'shortBreak': return modeColors.shortBreak;
       case 'longBreak': return modeColors.longBreak;
-    }
-  };
-
-  const getModeHue = (m: string) => {
-    switch (m) {
-      case 'pomodoro': return modeColors.pomodoro;
-      case 'shortBreak': return modeColors.shortBreak;
-      case 'longBreak': return modeColors.longBreak;
-      default: return '350';
     }
   };
 
