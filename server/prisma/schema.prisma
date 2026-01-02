@@ -18,6 +18,7 @@ model User {
   projects      Project[]
   settings      Settings?
   focusSessions FocusSession[]
+  habits        Habit[]
 }
 
 model Project {
@@ -73,3 +74,25 @@ model FocusSession {
   duration    Int      // Duration in minutes
   completedAt DateTime @default(now())
 }
+
+model Habit {
+  id        Int         @id @default(autoincrement())
+  name      String
+  emoji     String?     @default("✅")
+  archived  Boolean     @default(false)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs      HabitLog[]
+  createdAt DateTime    @default(now())
+}
+
+model HabitLog {
+  id        Int      @id @default(autoincrement())
+  habitId   Int
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date  // Store only the date, no time
+  completed Boolean  @default(true)
+  
+  @@unique([habitId, date])  // One log per habit per day
+}
+

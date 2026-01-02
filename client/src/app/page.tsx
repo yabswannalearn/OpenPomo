@@ -3,7 +3,7 @@
 import { Timer } from "@/components/Timer";
 import { TaskList } from "@/components/TaskList";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, BarChart3, Sun, Moon, Waves } from "lucide-react";
+import { CheckCircle2, BarChart3, Sun, Moon, Waves, Target } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { RegisterForm } from "@/components/auth/RegisterForm";
@@ -116,6 +116,12 @@ export default function Home() {
                   </Button>
                 </Link>
               )}
+              <Link href="/habits">
+                <Button variant="ghost" size="sm" className="flex items-center space-x-1">
+                  <Target className="h-4 w-4" />
+                  <span>Habits</span>
+                </Button>
+              </Link>
               <Link href="/dashboard">
                 <Button variant="ghost" size="sm" className="flex items-center space-x-1">
                   <BarChart3 className="h-4 w-4" />

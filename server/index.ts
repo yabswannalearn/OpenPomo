@@ -42,12 +42,14 @@ import projectRoutes from './routes/projects.js';
 import settingsRoutes from './routes/settings.js';
 import sessionRoutes from './routes/sessions.js';
 import adminRoutes from './routes/admin.js';
+import habitRoutes from './routes/habits.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', requireAuth, taskRoutes);
 app.use('/api/projects', requireAuth, projectRoutes);
 app.use('/api/settings', requireAuth, settingsRoutes);
 app.use('/api/sessions', requireAuth, sessionRoutes);
+app.use('/api/habits', requireAuth, habitRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.listen(PORT, () => {
